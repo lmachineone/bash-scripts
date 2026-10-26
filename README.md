@@ -1,5 +1,17 @@
 # bash-scripts
 
+Personal setup scripts and notes for configuring a new machine and keeping useful changes reproducible.
+
+## Omarchy
+
+[Omarchy setup](omarchy/README.md) contains the laptop preferences for remote development: stay awake and unlocked with the lid closed on AC, with idle locking and the screensaver disabled.
+
+## Repository workflow
+
+Make scoped changes directly on `main`, then commit and push. This repository does not use worktrees or pull requests. Keep additions small: useful scripts and clear instructions, without test suites or proof artifacts.
+
+This is a public repository. Never commit credentials, private keys, personal configuration dumps, private host addresses, or backups. Generate credentials on each machine and keep any private inputs outside the checkout.
+
 ## Contents
 
     In this repository I store bash scripts that I develop, useful or time-saving for me

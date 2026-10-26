@@ -1,0 +1,12 @@
+# Private material belongs outside this repository, even when ignored.
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+*.bak
+backups/
+private/
