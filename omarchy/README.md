@@ -55,6 +55,26 @@ To undo, use the backup from the run you want to reverse. Review later edits bef
 
 An existing locked session stays locked until you unlock it. For a new setup, check the lid behavior while physically present before relying on unattended access. Other logind overrides or desktop power settings can affect the result.
 
+## VM host prerequisites
+
+[`install-vm-host-dependencies.sh`](install-vm-host-dependencies.sh) prepares the packages for a headless KVM/libvirt host on Arch/Omarchy x86_64:
+
+```bash
+# Read-only check. Exit 2 means packages are missing.
+bash omarchy/install-vm-host-dependencies.sh
+
+# Install missing packages, with the normal pacman confirmation.
+bash omarchy/install-vm-host-dependencies.sh --install
+```
+
+Add `--yes` only for an already reviewed unattended transaction. The package set is `qemu-base`, `libvirt`, `dnsmasq`, `edk2-ovmf`, `cloud-image-utils`, `nftables`, `curl`, `gnupg`, `python`, and `jq`. Pacman also installs their dependencies. Run as your normal user with `sudo`, or as root through an approved provisioning path.
+
+The installer uses existing package indexes. It never runs `pacman -Sy` or a general OS upgrade. It stops if the cached indexes show pending upgrades or the transaction cannot resolve. Keep the system current through Omarchy's normal update process before installing; stale indexes can refer to packages that mirrors no longer carry. On a mirror or dependency error, stop and resolve the system update separately rather than attempting a partial upgrade.
+
+No VM, network, user/group membership, firewall policy or libvirt service is configured by this script. Package hooks can still run. Set up the intended network protection and guarded VM startup separately before activating libvirt or guests. The [Ubuntu guest installer](../ubuntu/README.md) covers packages inside a dedicated guest.
+
+Reruns skip installation when all prerequisites are present. Inspect `/var/log/pacman.log` to identify the original package transaction for recovery. Retain packages used by other workloads; do not blanket-remove dependencies. Disabling a later VM is separate from removing these packages.
+
 ## GitHub access on a replacement machine
 
 Generate a new SSH key on each machine; do not copy a private key into this repository:

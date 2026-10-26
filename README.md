@@ -6,6 +6,8 @@ Personal setup scripts and notes for configuring a new machine and keeping usefu
 
 [Omarchy setup](omarchy/README.md) contains the laptop preferences for remote development: stay awake and unlocked with the lid closed on AC, with idle locking and the screensaver disabled.
 
+It also includes a [KVM/libvirt host dependency installer](omarchy/README.md#vm-host-prerequisites). The [Ubuntu runner guest installer](ubuntu/README.md) covers the separate Ubuntu 24.04 VM package layer. Both default to read-only checks; VM, networking and runner configuration are separate.
+
 ## Repository workflow
 
 Make scoped changes directly on `main`, then commit and push. This repository does not use worktrees or pull requests. Keep additions small: useful scripts and clear instructions, without test suites or proof artifacts.
