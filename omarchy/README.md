@@ -92,6 +92,15 @@ sudo python3 omarchy/predator-ph315-53-fans.py auto
 
 Run from this repository on the laptop. The script changes only the two fan-mode bytes. It preserves the Linux power profile, CoolBoost, voltage settings, CPU/GPU performance controls and Turbo LED. It stops on unknown mode values or a detected conflicting fan controller. The register map comes from the exact-model [PredatorNonSense implementation](https://github.com/kphanipavan/PredatorNonSense/blob/75fd228ca43bc85f6f25770ee8e0670e29d58df1/main.py), by Phani Pavan Kambhampati; its other hardware controls are not used.
 
+To keep the command available independently of the checkout, install the reviewed script:
+
+```bash
+sudo install -m 0755 omarchy/predator-ph315-53-fans.py /usr/local/bin/predator-ph315-53-fans
+sudo predator-ph315-53-fans status
+```
+
+Use `sudo predator-ph315-53-fans max` or `sudo predator-ph315-53-fans auto` afterward. Removing this installed file does not change the current fan mode; return to `auto` first when retiring it.
+
 The command verifies mode readback and attempts to restore the original pair if verification fails. It unloads `ec_sys` only when it loaded that module itself. Firmware keeps the requested fan mode afterward; reboot, suspend or a hardware key may change it. There is no boot-time persistence. Use `auto` for normal recovery, and do not run another fan utility concurrently.
 
 The displayed speed numbers are raw EC readings, not independently calibrated RPM. Maximum mode and rising readings show a control response; check physical airflow and temperatures separately. This is model-specific low-level hardware control, not a generic fan script. Keep vents clear and the lid open under sustained load.
