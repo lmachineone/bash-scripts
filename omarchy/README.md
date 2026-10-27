@@ -75,6 +75,27 @@ No VM, network, user/group membership, firewall policy or libvirt service is con
 
 Reruns skip installation when all prerequisites are present. Inspect `/var/log/pacman.log` to identify the original package transaction for recovery. Retain packages used by other workloads; do not blanket-remove dependencies. Disabling a later VM is separate from removing these packages.
 
+## Predator PH315-53 fan cooling
+
+[`predator-ph315-53-fans.py`](predator-ph315-53-fans.py) selects firmware Auto or Maximum for both fans. It supports only **Predator PH315-53 with BIOS V2.04**, the verified hardware/firmware pair. It uses the kernel's existing `ec_sys` module, Python 3 and `powerprofilesctl`; it installs no packages or service.
+
+```bash
+# Read fan modes and the firmware's raw speed values.
+sudo python3 omarchy/predator-ph315-53-fans.py status
+
+# Select maximum cooling for both fans.
+sudo python3 omarchy/predator-ph315-53-fans.py max
+
+# Return both fans to firmware automatic control.
+sudo python3 omarchy/predator-ph315-53-fans.py auto
+```
+
+Run from this repository on the laptop. The script changes only the two fan-mode bytes. It preserves the Linux power profile, CoolBoost, voltage settings, CPU/GPU performance controls and Turbo LED. It stops on unknown mode values or a detected conflicting fan controller. The register map comes from the exact-model [PredatorNonSense implementation](https://github.com/kphanipavan/PredatorNonSense/blob/75fd228ca43bc85f6f25770ee8e0670e29d58df1/main.py), by Phani Pavan Kambhampati; its other hardware controls are not used.
+
+The command verifies mode readback and attempts to restore the original pair if verification fails. It unloads `ec_sys` only when it loaded that module itself. Firmware keeps the requested fan mode afterward; reboot, suspend or a hardware key may change it. There is no boot-time persistence. Use `auto` for normal recovery, and do not run another fan utility concurrently.
+
+The displayed speed numbers are raw EC readings, not independently calibrated RPM. Maximum mode and rising readings show a control response; check physical airflow and temperatures separately. This is model-specific low-level hardware control, not a generic fan script. Keep vents clear and the lid open under sustained load.
+
 ## GitHub access on a replacement machine
 
 Generate a new SSH key on each machine; do not copy a private key into this repository:
