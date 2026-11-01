@@ -75,6 +75,67 @@ No VM, network, user/group membership, firewall policy or libvirt service is con
 
 Reruns skip installation when all prerequisites are present. Inspect `/var/log/pacman.log` to identify the original package transaction for recovery. Retain packages used by other workloads; do not blanket-remove dependencies. Disabling a later VM is separate from removing these packages.
 
+## Docker and NVIDIA containers
+
+[`install-ai-container-dependencies.sh`](install-ai-container-dependencies.sh) prepares Docker Compose and GPU containers on Arch/Omarchy x86_64. It uses Arch's official `docker`, `docker-compose`, and `nvidia-container-toolkit` packages. The toolkit brings `libnvidia-container` as a dependency; no AUR helper or separate CUDA development toolkit is needed for prebuilt inference images.
+
+```bash
+# Read-only package and host-driver check. Exit 2 means a prerequisite is missing.
+bash omarchy/install-ai-container-dependencies.sh
+
+# Install only missing packages, with normal pacman confirmation.
+bash omarchy/install-ai-container-dependencies.sh --install
+```
+
+Use `--yes` only for an already reviewed unattended package transaction. The installer requires a working `nvidia-smi` and leaves the host GPU driver alone. It uses existing package indexes and stops on pending upgrades. Use Omarchy's normal full update first when indexes are stale or packages no longer resolve; do not run `pacman -Sy` alone. Package hooks can run during installation. The script does not activate Docker or configure GPU access.
+
+### Register the NVIDIA runtime
+
+Do this during an authorized host maintenance window. First inspect `systemctl status docker.service` and identify existing workloads. Starting Docker can restart existing containers and Dokploy services; restarting a running daemon can interrupt them. Installing packages alone is not permission to interrupt those workloads.
+
+Preserve the existing daemon configuration privately before using NVIDIA's supported merge command. Run this block in one Bash shell on the target host:
+
+```bash
+backup_dir=$(sudo mktemp -d /var/backups/docker-nvidia.XXXXXXXX)
+if sudo test -e /etc/docker/daemon.json; then
+    sudo cp -a /etc/docker/daemon.json "$backup_dir/daemon.json"
+else
+    sudo touch "$backup_dir/daemon-json-was-absent"
+fi
+printf 'Private recovery directory: %s\n' "$backup_dir"
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo dockerd --validate --config-file=/etc/docker/daemon.json
+```
+
+The command updates `/etc/docker/daemon.json` while retaining other settings. Do not use `--set-as-default`: ordinary containers should keep their existing runtime. If validation fails, restore the previous configuration before activation. Keep the backup outside this public repository.
+
+After validation, choose the action matching the existing daemon state:
+
+```bash
+# Docker was stopped: enable boot startup and start it.
+sudo systemctl enable --now docker.service
+
+# Docker was already running: apply the runtime change during its maintenance window.
+sudo systemctl restart docker.service
+```
+
+Run only the applicable activation command. Do not reinstall Dokploy or initialize another Swarm. Do not add a user to the `docker` group automatically; use the existing access policy or `sudo`.
+
+### Verify and recover
+
+```bash
+docker compose version
+sudo docker info --format '{{json .Runtimes}}'
+# Downloads this sample image if absent, then removes its test container.
+sudo docker run --rm --runtime=nvidia --gpus all ubuntu nvidia-smi
+```
+
+The runtime list must include `nvidia`, and the container must see the intended GPU. This sample follows NVIDIA's official workload check; it is an explicit execution step, not part of the installer's default check. Use the application's pinned image for final inference proof. Recheck GPU access after daemon changes; NVIDIA documents a systemd cgroup issue where `daemon-reload` can revoke access from running GPU containers.
+
+To reverse runtime registration, restore the private `daemon.json` backup, or remove the newly created file only if it was previously absent and no later settings were added. Validate the resulting configuration and restart Docker in a maintenance window. Preserve the previous service enablement state. Package removal is separate: inspect `/var/log/pacman.log` and retain packages used by other workloads. Application/model volumes and backups have their own retention policy.
+
+Sources checked 1 November 2026: [Arch Docker](https://archlinux.org/packages/extra/x86_64/docker/), [Arch Compose](https://archlinux.org/packages/extra/x86_64/docker-compose/), [Arch NVIDIA Container Toolkit](https://archlinux.org/packages/extra/x86_64/nvidia-container-toolkit/), [NVIDIA installation and Docker configuration](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html), [NVIDIA sample workload](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/sample-workload.html), and [Docker daemon startup](https://docs.docker.com/engine/daemon/start/). The Arch Wiki could not be read during this research; these package and vendor sources support the procedure directly.
+
 ## Predator PH315-53 fan cooling
 
 [`predator-ph315-53-fans.py`](predator-ph315-53-fans.py) selects firmware Auto or Maximum for both fans. It supports only **Predator PH315-53 with BIOS V2.04**, the verified hardware/firmware pair. It uses the kernel's existing `ec_sys` module, Python 3 and `powerprofilesctl`; it installs no packages or service.
