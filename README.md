@@ -8,6 +8,11 @@ Personal setup scripts and notes for configuring a new machine and keeping usefu
 
 It also includes a [KVM/libvirt host dependency installer](omarchy/README.md#vm-host-prerequisites). The [Ubuntu runner guest installer](ubuntu/README.md) covers the separate Ubuntu 24.04 VM package layer. Both default to read-only checks; VM, networking and runner configuration are separate.
 
+## Fan controls
+
+[Laptop fan commands](hardware/README.md) provide `fans max`, `fans auto` and
+`fans status` for the verified Acer Predator and Dell Inspiron models.
+
 ## Repository workflow
 
 Make scoped changes directly on `main`, then commit and push. This repository does not use worktrees or pull requests. Keep additions small: useful scripts and clear instructions, without test suites or proof artifacts.
