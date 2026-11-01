@@ -96,7 +96,8 @@ Do this during an authorized host maintenance window. First inspect `systemctl s
 Preserve the existing daemon configuration privately before using NVIDIA's supported merge command. Run this block in one Bash shell on the target host:
 
 ```bash
-backup_dir=$(sudo mktemp -d /var/backups/docker-nvidia.XXXXXXXX)
+sudo install -d -m 0700 /var/lib/bash-scripts/docker-nvidia-backups
+backup_dir=$(sudo mktemp -d /var/lib/bash-scripts/docker-nvidia-backups/backup.XXXXXXXX)
 if sudo test -e /etc/docker/daemon.json; then
     sudo cp -a /etc/docker/daemon.json "$backup_dir/daemon.json"
 else
