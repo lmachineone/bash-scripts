@@ -2,14 +2,12 @@
 """Select maximum cooling or firmware automatic control on verified laptops."""
 
 import argparse
-import fcntl
 import hashlib
 import json
 import os
 from pathlib import Path
 import stat
 import subprocess
-import time
 
 ACER_HELPER = Path('/usr/local/bin/predator-ph315-53-fans')
 ACER_SHA256 = '05826389c65677e706f56d0455bc0e7664961e8e670fdaa91d8de71026dc743b'
@@ -51,63 +49,21 @@ def dell_path():
 
 
 def dell_snapshot(device):
-    result = {name: int((device / name).read_text().strip())
-              for name in ['pwm1_enable', 'pwm1', 'fan1_input']}
-    if result['pwm1_enable'] not in (1, 2) or not 0 <= result['pwm1'] <= 255:
+    mode = int((device / 'pwm1_enable').read_text().strip())
+    # The driver returns ENODATA for PWM while the special automatic state is active.
+    result = {'pwm1_enable': mode, 'pwm1': None if mode == 2 else int((device / 'pwm1').read_text().strip()),
+              'fan1_input': int((device / 'fan1_input').read_text().strip())}
+    if mode not in (1, 2) or (mode == 1 and not 0 <= result['pwm1'] <= 255):
         raise RuntimeError('Unrecognized native fan-control state')
     return result
 
 
-def dell_set(device, mode):
-    before = dell_snapshot(device)
-    desired = 1 if mode == 'max' else 2
-    try:
-        # The kernel maps 1 to manual maximum and 2 to automatic BIOS control.
-        (device / 'pwm1_enable').write_text(f'{desired}\n')
-        time.sleep(2)
-        after = dell_snapshot(device)
-        if after['pwm1_enable'] != desired or (mode == 'max' and after['pwm1'] != 255):
-            raise RuntimeError('Fan-mode readback mismatch')
-        return after
-    except BaseException:
-        try:
-            (device / 'pwm1_enable').write_text(f"{before['pwm1_enable']}\n")
-            if before['pwm1_enable'] == 1:
-                (device / 'pwm1').write_text(f"{before['pwm1']}\n")
-            restored = dell_snapshot(device)
-            if restored['pwm1_enable'] != before['pwm1_enable'] or (
-                before['pwm1_enable'] == 1 and restored['pwm1'] != before['pwm1']
-            ):
-                raise RuntimeError('Original fan state did not return')
-        except BaseException as error:
-            raise RuntimeError('Fan change failed and recovery could not be verified; inspect native control') from error
-        raise
-
-
 def dell(mode):
-    if mode != 'status' and os.geteuid() != 0:
-        raise RuntimeError(f'Run sudo fans {mode}')
-    device = dell_path()
-    if mode == 'status':
-        data = dell_snapshot(device)
-    else:
-        for process in Path('/proc').glob('[0-9]*/comm'):
-            try:
-                if process.read_text().strip() in {'fancontrol', 'i8kmon', 'nbfc_service'}:
-                    raise RuntimeError('Another fan controller is active')
-            except (FileNotFoundError, ProcessLookupError):
-                pass
-        descriptor = os.open('/run/lock/laptop-fans.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
-        with os.fdopen(descriptor, 'r+') as lock:
-            info = os.fstat(lock.fileno())
-            if not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o022:
-                raise RuntimeError('Fan lock must be a root-owned, protected regular file')
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            data = dell_set(device, mode)
-    label = 'Automatic (firmware)' if data['pwm1_enable'] == 2 else (
-        'Maximum' if data['pwm1'] == 255 else f"Manual PWM {data['pwm1']}/255"
-    )
-    print(f"Dell fan: {label}; {data['fan1_input']} RPM")
+    if mode != 'status':
+        raise RuntimeError('Dell fan override unavailable: this firmware rejected automatic-control recovery; no setting changed')
+    data = dell_snapshot(dell_path())
+    print(f"Dell fan: {data['fan1_input']} RPM; reported PWM {data['pwm1']}/255")
+    print('Maximum/automatic switching is unavailable on this verified firmware. PWM alone does not prove control ownership.')
 
 
 def main():

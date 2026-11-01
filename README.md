@@ -11,7 +11,8 @@ It also includes a [KVM/libvirt host dependency installer](omarchy/README.md#vm-
 ## Fan controls
 
 [Laptop fan commands](hardware/README.md) provide `fans max`, `fans auto` and
-`fans status` for the verified Acer Predator and Dell Inspiron models.
+`fans status` for the verified Acer Predator. The Dell Inspiron supports status
+only because its firmware rejected automatic-control recovery.
 
 ## Repository workflow
 

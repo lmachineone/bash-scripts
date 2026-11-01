@@ -1,6 +1,6 @@
 # Laptop fan commands
 
-[`fans.py`](fans.py) provides the same commands on two verified laptop models:
+[`fans.py`](fans.py) provides these commands on the verified Acer Predator:
 
 ```bash
 fans max     # Maximum cooling
@@ -33,11 +33,15 @@ The original helper remains available independently of this shortcut.
 
 ## Dell Inspiron 15 5510, BIOS 2.37.0
 
-The dispatcher discovers the existing `dell_smm` hwmon device by name, checks
-single-fan coverage and uses the kernel's documented control: mode 1 selects
-manual maximum and mode 2 restores automatic BIOS control. It verifies readback
-and attempts to restore the prior setting if a change fails. It stops on
-unknown topology or a competing fan-control daemon. Thermald remains enabled.
+**Status only.** Native testing on this firmware rejected the kernel's automatic
+control command with `EINVAL`. The presence of `pwm1_enable` does not establish
+working firmware support. Both `fans max` and `fans auto` therefore refuse without
+changing any setting. Do not enable an override until automatic recovery works.
+
+`fans status` discovers the existing `dell_smm` device by name and checks
+single-fan coverage. It reports RPM and the driver's PWM reading. Maximum PWM
+alone does not prove that firmware automatic control is disabled. Thermald
+remains enabled. See the [kernel driver documentation](https://docs.kernel.org/hwmon/dell-smm-hwmon.html).
 
 Install the reviewed command in an unused root-owned path:
 
@@ -45,14 +49,12 @@ Install the reviewed command in an unused root-owned path:
 sudo install -m 0755 hardware/fans.py /usr/local/bin/fans
 ```
 
-Root sessions can use the commands directly. Other users need `sudo fans max`
-or `sudo fans auto`; `fans status` is read-only. No sudo policy is installed.
-Maximum is the firmware's highest fan setting; measured RPM can differ from
-its nominal target. See the [kernel driver documentation](https://docs.kernel.org/hwmon/dell-smm-hwmon.html).
+`fans status` is read-only. No sudo policy or alternative firmware command is
+installed. No reliable maximum/automatic toggle is claimed for this model.
 
 ## Recovery and removal
 
-Use `fans auto` to hand control back to firmware. Firmware, suspend, reboot or
+On Acer, use `fans auto` to hand control back to firmware. Firmware, suspend, reboot or
 another fan controller may change the selected mode; these commands add no
 startup override. Unsupported firmware needs a fresh compatibility check.
 
