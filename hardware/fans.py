@@ -10,7 +10,7 @@ import stat
 import subprocess
 
 ACER_HELPER = Path('/usr/local/bin/predator-ph315-53-fans')
-ACER_SHA256 = '05826389c65677e706f56d0455bc0e7664961e8e670fdaa91d8de71026dc743b'
+ACER_SHA256 = '478a5009c16a017cdb6722b7b8ed38cc080cff11404a43801e195f6bebd39908'
 DMI = Path('/sys/class/dmi/id')
 
 
@@ -28,7 +28,7 @@ def acer(mode):
     modes = data['after']['modes']
     for name, register, automatic, maximum in [('cpu', '34', 0x54, 0x58), ('gpu', '33', 0x50, 0x60)]:
         value = modes[register]
-        label = {automatic: 'Automatic (firmware)', maximum: 'Maximum'}.get(value)
+        label = {0: 'Automatic (firmware)', automatic: 'Automatic (firmware)', maximum: 'Maximum'}.get(value)
         if label is None:
             raise RuntimeError('Unexpected Acer helper result')
         print(f"Acer {name.upper()} fan: {label}; raw speed {data['after']['fan_speed_raw'][name]}")

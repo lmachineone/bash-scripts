@@ -20,6 +20,10 @@ helper. That helper must already be installed with the source hash this
 dispatcher verifies. Both CPU and GPU fans are controlled. Run as the normal
 user; sudo prompts for the usual password when necessary.
 
+The helper recognizes both the normal automatic values and the zero automatic
+state documented by its original controller source. This supports a fresh boot
+without treating an unknown mode as safe.
+
 Install the shortcut in the user-local command directory, if that path is
 unused and the directory is already in your shell's PATH:
 

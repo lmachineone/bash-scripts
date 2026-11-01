@@ -36,7 +36,8 @@ def read_byte(fd, register):
 def snapshot(fd):
     modes = {register: read_byte(fd, register) for register in MODES["auto"]}
     for register, value in modes.items():
-        if value not in (MODES["auto"][register], MODES["max"][register]):
+        # The cited upstream also recognizes 0x00 as automatic for both fans.
+        if value not in (0x00, MODES["auto"][register], MODES["max"][register]):
             raise RuntimeError(f"Unverified fan mode at 0x{register:02x}: 0x{value:02x}")
     raw = {}
     for name, register in (("cpu", 0x13), ("gpu", 0x15)):
