@@ -135,7 +135,34 @@ The runtime list must include `nvidia`, and the container must see the intended 
 
 To reverse runtime registration, restore the private `daemon.json` backup, or remove the newly created file only if it was previously absent and no later settings were added. Validate the resulting configuration and restart Docker in a maintenance window. Preserve the previous service enablement state. Package removal is separate: inspect `/var/log/pacman.log` and retain packages used by other workloads. Application/model volumes and backups have their own retention policy.
 
-Sources checked 1 November 2026: [Arch Docker](https://archlinux.org/packages/extra/x86_64/docker/), [Arch Compose](https://archlinux.org/packages/extra/x86_64/docker-compose/), [Arch NVIDIA Container Toolkit](https://archlinux.org/packages/extra/x86_64/nvidia-container-toolkit/), [NVIDIA installation and Docker configuration](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html), [NVIDIA sample workload](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/sample-workload.html), and [Docker daemon startup](https://docs.docker.com/engine/daemon/start/). The Arch Wiki could not be read during this research; these package and vendor sources support the procedure directly.
+### Docker socket ordering with a privacy guard
+
+Apply this only when an existing Docker socket guard waits for normal services, such as Tailscale or network readiness, and systemd reports an ordering cycle through `sockets.target` and `basic.target`. The default socket ordering runs before those targets, while the guard needs services that start afterward. Enabled unit flags do not prove that startup succeeds.
+
+[`docker.socket.d/95-private-boot-order.conf`](docker.socket.d/95-private-boot-order.conf) removes the conflicting default early-socket ordering and explicitly retains initialization and shutdown dependencies. It leaves existing privacy requirements, binding dependencies and pre-start checks in place. It does not install a guard or change Docker's service unit, firewall, ports or daemon configuration. Do not apply it as a generic Docker optimization.
+
+First retain a private copy of the current drop-ins and record service/container state. Check whether an equivalent correction already exists; keep one owned drop-in. During a coordinated maintenance slot, install the file without overwriting another owner's configuration:
+
+```bash
+sudo install -d -m 0755 /etc/systemd/system/docker.socket.d
+if sudo test -e /etc/systemd/system/docker.socket.d/95-private-boot-order.conf || \
+    sudo test -L /etc/systemd/system/docker.socket.d/95-private-boot-order.conf; then
+    printf 'Existing drop-in: inspect it before making changes.\n' >&2
+else
+    sudo install -m 0644 omarchy/docker.socket.d/95-private-boot-order.conf \
+        /etc/systemd/system/docker.socket.d/95-private-boot-order.conf
+fi
+sudo systemd-analyze verify --recursive-errors=yes --man=no \
+    default.target docker.service docker.socket
+```
+
+Include the actual privacy guard and adjacent boot units in verification. Inspect the diagnostics as well as the exit code: a discarded job can break a cycle while leaving a zero exit status. Stop if any ordering cycle or dropped required job remains. After a clean result, run `sudo systemctl daemon-reload`, then read back `DefaultDependencies`, `Requires`, `BindsTo`, `After`, `Before`, `Conflicts` and `ExecStartPre` with `systemctl show docker.socket`. Check the guard, workload identities, private access and health again. A daemon reload should not restart Docker, but NVIDIA's cgroup caveat above still requires a safe workload slot.
+
+For rollback, remove only this newly installed, unchanged drop-in, or restore its exact preimage if an authorized replacement was made. Reload systemd in another coordinated slot. This restores the previous ordering, including the original defect; it is a recovery handle, not a permanent fix.
+
+Configuration verification is separate from reboot acceptance. Before a controlled reboot, establish disk-unlock and local recovery access, quiesce affected work, and capture service/configuration identity. After boot, confirm the guard precedes Docker, no required start job was discarded, the original services return automatically, private access works and forbidden ingress stays denied. Encrypted storage may require someone at the machine before SSH can return.
+
+Sources checked 1 November 2026: [Arch Docker](https://archlinux.org/packages/extra/x86_64/docker/), [Arch Compose](https://archlinux.org/packages/extra/x86_64/docker-compose/), [Arch NVIDIA Container Toolkit](https://archlinux.org/packages/extra/x86_64/nvidia-container-toolkit/), [NVIDIA installation and Docker configuration](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html), [NVIDIA sample workload](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/sample-workload.html), [Docker daemon startup](https://docs.docker.com/engine/daemon/start/), [systemd socket dependencies](https://www.freedesktop.org/software/systemd/man/262/systemd.socket.html#Default%20Dependencies), and [systemd unit verification](https://www.freedesktop.org/software/systemd/man/262/systemd-analyze.html). The Arch Wiki could not be read during this research; these package and vendor sources support the procedure directly.
 
 ## Predator PH315-53 fan cooling
 
